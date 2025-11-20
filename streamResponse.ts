@@ -26,6 +26,7 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
 
       let contentBlockIndex = 0;
       let hasStartedTextBlock = false;
+      let hasStartedThinkingBlock = false;
       let isToolUse = false;
       let currentToolCallId: string | null = null;
       let toolCallJsonMap = new Map<string, string>();
@@ -102,7 +103,7 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
             const toolCallId = toolCall.id;
 
             if (toolCallId && toolCallId !== currentToolCallId) {
-              if (isToolUse || hasStartedTextBlock) {
+              if (isToolUse || hasStartedTextBlock || hasStartedThinkingBlock) {
                 enqueueSSE(controller, "content_block_stop", {
                   type: "content_block_stop",
                   index: contentBlockIndex,
@@ -111,6 +112,7 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
 
               isToolUse = true;
               hasStartedTextBlock = false; // Reset text block flag
+              hasStartedThinkingBlock = false; // Reset thinking block flag
               currentToolCallId = toolCallId;
               contentBlockIndex++;
               toolCallJsonMap.set(toolCallId, "");
@@ -143,13 +145,49 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
               });
             }
           }
+        } else if (delta.reasoning) {
+          // Handle reasoning/thinking
+          if (isToolUse || hasStartedTextBlock) {
+            enqueueSSE(controller, "content_block_stop", {
+              type: "content_block_stop",
+              index: contentBlockIndex,
+            });
+            isToolUse = false;
+            hasStartedTextBlock = false;
+            currentToolCallId = null;
+            contentBlockIndex++;
+          }
+
+          if (!hasStartedThinkingBlock) {
+            enqueueSSE(controller, "content_block_start", {
+              type: "content_block_start",
+              index: contentBlockIndex,
+              content_block: {
+                type: "thinking",
+                thinking: "",
+                signature: "openrouter-reasoning" // Placeholder
+              },
+            });
+            hasStartedThinkingBlock = true;
+          }
+
+          enqueueSSE(controller, "content_block_delta", {
+            type: "content_block_delta",
+            index: contentBlockIndex,
+            delta: {
+              type: "thinking_delta",
+              thinking: delta.reasoning,
+            },
+          });
+
         } else if (delta.content) {
-          if (isToolUse) {
+          if (isToolUse || hasStartedThinkingBlock) {
             enqueueSSE(controller, "content_block_stop", {
               type: "content_block_stop",
               index: contentBlockIndex,
             });
             isToolUse = false; // Reset tool use flag
+            hasStartedThinkingBlock = false; // Reset thinking block flag
             currentToolCallId = null;
             contentBlockIndex++; // Increment for new text block
           }
@@ -178,7 +216,7 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
       }
 
       // Close last content block
-      if (isToolUse || hasStartedTextBlock) {
+      if (isToolUse || hasStartedTextBlock || hasStartedThinkingBlock) {
         enqueueSSE(controller, "content_block_stop", {
           type: "content_block_stop",
           index: contentBlockIndex,
