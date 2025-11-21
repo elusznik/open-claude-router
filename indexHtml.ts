@@ -225,12 +225,12 @@ export ANTHROPIC_SMALL_FAST_MODEL="google/gemini-2.5-flash"</div>
             </div>
 
             <div class="note">
-                <p><strong>For data privacy:</strong> Consider <a href="https://github.com/luohy15/y-router?tab=readme-ov-file#setup" target="_blank">self-deploying y-router</a> to Cloudflare Workers instead of using this shared instance.</p>
+                <p><strong>For data privacy:</strong> Consider <a href="https://github.com/luohy15/open-claude-router?tab=readme-ov-file#setup" target="_blank">self-deploying open-claude-router</a> to Cloudflare Workers instead of using this shared instance.</p>
             </div>
         </div>
 
         <div class="footer-links">
-            <a href="https://github.com/luohy15/y-router" target="_blank">y-router</a>
+            <a href="https://github.com/luohy15/open-claude-router" target="_blank">open-claude-router</a>
             <a href="https://openrouter.ai" target="_blank">OpenRouter</a>
             <a href="https://claude.ai/code" target="_blank">Claude Code</a>
             <a href="https://yovy.app" target="_blank">Yovy Chat</a>

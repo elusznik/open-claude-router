@@ -1,5 +1,5 @@
 services:
-  y-router:
+  open-claude-router:
     build: .
     user: "root"
     ports:
