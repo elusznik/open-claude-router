@@ -85,6 +85,16 @@ y-router acts as a translation layer that:
 - Translates the response back to Anthropic's format
 - Supports both streaming and non-streaming responses
 
+## OpenRouter Reasoning Support
+
+y-router fully supports OpenRouter's reasoning capabilities (e.g., for DeepSeek R1), bridging the gap between Claude's `thinking` parameter and OpenRouter's `reasoning` parameter.
+
+- **Bidirectional Mapping**:
+  - **Requests**: Claude's `thinking` block (e.g., from Claude Code) is converted to OpenRouter's `reasoning` parameter.
+  - **Responses**: OpenRouter's `reasoning` tokens are converted back into Claude's `thinking` content blocks.
+- **Streaming Support**: Reasoning tokens are streamed in real-time as `thinking_delta` events, allowing you to see the model's thought process in compatible tools.
+- **Smart Defaults**: If no reasoning parameters are provided, y-router defaults to `effort: 'high'` to ensure reasoning models perform at their best.
+
 ## Perfect for Claude Code + OpenRouter
 
 This allows you to use [Claude Code](https://claude.ai/code) with OpenRouter's vast selection of models by:
