@@ -1,3 +1,6 @@
+
+// Mock TextEncoder/TextDecoder for Node environment if needed (Node 11+ has them globally)
+
 export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: string): ReadableStream {
   const messageId = "msg_" + Date.now();
   
@@ -50,9 +53,6 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
                   
                   try {
                     const parsed = JSON.parse(data);
-                    if (parsed.usage) {
-                      usage = parsed.usage;
-                    }
                     const delta = parsed.choices?.[0]?.delta;
                     if (delta) {
                       processStreamDelta(delta);
@@ -83,14 +83,10 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
               
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.usage) {
-                  usage = parsed.usage;
-                }
                 const delta = parsed.choices?.[0]?.delta;
                 
-                if (delta) {
-                  processStreamDelta(delta);
-                }
+                if (!delta) continue;
+                processStreamDelta(delta);
               } catch (e) {
                 // Parse error
                 continue;
@@ -255,3 +251,38 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
     },
   });
 }
+
+// Mock ReadableStream
+function createMockStream(chunks: any[]) {
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        const data = `data: ${JSON.stringify(chunk)}\n\n`;
+        controller.enqueue(new TextEncoder().encode(data));
+      }
+      controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+      controller.close();
+    }
+  });
+}
+
+async function runTest() {
+  const chunks = [
+    { choices: [{ delta: { content: "Hello" } }] },
+    { choices: [{ delta: { content: " world" } }] },
+    { usage: { prompt_tokens: 100, completion_tokens: 50 }, choices: [] } // Usage at the end
+  ];
+
+  const mockStream = createMockStream(chunks);
+  const transformedStream = streamOpenAIToAnthropic(mockStream, 'test-model');
+  const reader = transformedStream.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    console.log(decoder.decode(value));
+  }
+}
+
+runTest();

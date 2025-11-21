@@ -1,7 +1,11 @@
-export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: string): ReadableStream {
+
+const { ReadableStream } = require('stream/web');
+const { TextEncoder, TextDecoder } = require('util');
+
+function streamOpenAIToAnthropic(openaiStream, model) {
   const messageId = "msg_" + Date.now();
   
-  const enqueueSSE = (controller: ReadableStreamDefaultController, eventType: string, data: any) => {
+  const enqueueSSE = (controller, eventType, data) => {
     const sseMessage = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
     controller.enqueue(new TextEncoder().encode(sseMessage));
   };
@@ -28,9 +32,9 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
       let hasStartedTextBlock = false;
       let hasStartedThinkingBlock = false;
       let isToolUse = false;
-      let currentToolCallId: string | null = null;
-      let toolCallJsonMap = new Map<string, string>();
-      let usage: { prompt_tokens?: number; completion_tokens?: number } | undefined = undefined;
+      let currentToolCallId = null;
+      let toolCallJsonMap = new Map();
+      let usage = undefined;
 
       const reader = openaiStream.getReader();
       const decoder = new TextDecoder();
@@ -102,7 +106,7 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
         reader.releaseLock();
       }
 
-      function processStreamDelta(delta: any) {
+      function processStreamDelta(delta) {
         if (delta.usage) {
           usage = delta.usage;
         }
@@ -255,3 +259,38 @@ export function streamOpenAIToAnthropic(openaiStream: ReadableStream, model: str
     },
   });
 }
+
+// Mock ReadableStream
+function createMockStream(chunks) {
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        const data = `data: ${JSON.stringify(chunk)}\n\n`;
+        controller.enqueue(new TextEncoder().encode(data));
+      }
+      controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+      controller.close();
+    }
+  });
+}
+
+async function runTest() {
+  const chunks = [
+    { choices: [{ delta: { content: "Hello" } }] },
+    { choices: [{ delta: { content: " world" } }] },
+    { usage: { prompt_tokens: 100, completion_tokens: 50 }, choices: [] } // Usage at the end
+  ];
+
+  const mockStream = createMockStream(chunks);
+  const transformedStream = streamOpenAIToAnthropic(mockStream, 'test-model');
+  const reader = transformedStream.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    console.log(decoder.decode(value));
+  }
+}
+
+runTest();
