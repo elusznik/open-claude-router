@@ -17,13 +17,17 @@ function saveConfig(config) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
-function patchConfig() {
+function patchConfig(modelName) {
   console.log('🔧 Patching Claude Code configuration...');
   
   // 1. Backup existing config
   if (fs.existsSync(CONFIG_PATH)) {
-    fs.copyFileSync(CONFIG_PATH, BACKUP_PATH);
-    console.log('📦 Created backup at', BACKUP_PATH);
+    if (!fs.existsSync(BACKUP_PATH)) {
+      fs.copyFileSync(CONFIG_PATH, BACKUP_PATH);
+      console.log('📦 Created backup at', BACKUP_PATH);
+    } else {
+      console.log('ℹ️  Backup already exists. Skipping backup to preserve original state.');
+    }
   }
 
   const config = loadConfig();
@@ -31,8 +35,20 @@ function patchConfig() {
   // 2. Inject Router Settings
   config.anthropicBaseUrl = 'http://localhost:8787';
   
-  // Optional: Inject model if provided via env var (though router handles override)
-  // We primarily want to ensure the URL points to us.
+  // 3. Inject Model Override (if provided)
+  if (modelName) {
+    console.log(`🎭 Injecting model override: ${modelName}`);
+    if (!config.env) config.env = {};
+    
+    // Update relevant model keys to ensure UI reflects the change
+    config.env.ANTHROPIC_MODEL = modelName;
+    config.env.ANTHROPIC_SMALL_FAST_MODEL = modelName;
+    
+    // Also update defaults to be safe/consistent
+    config.env.ANTHROPIC_DEFAULT_SONNET_MODEL = modelName;
+    config.env.ANTHROPIC_DEFAULT_OPUS_MODEL = modelName;
+    config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = modelName;
+  }
   
   saveConfig(config);
   console.log('✅ Configuration patched to use local router.');
@@ -51,11 +67,12 @@ function restoreConfig() {
 }
 
 const command = process.argv[2];
+const modelArg = process.argv[3];
 
 if (command === 'patch') {
-  patchConfig();
+  patchConfig(modelArg);
 } else if (command === 'restore') {
   restoreConfig();
 } else {
-  console.log('Usage: node manage-config.js [patch|restore]');
+  console.log('Usage: node manage-config.js [patch <model>] | [restore]');
 }

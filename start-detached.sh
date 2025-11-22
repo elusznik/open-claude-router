@@ -1,7 +1,13 @@
 #!/bin/bash
 
-# Patch Claude Code configuration
-node manage-config.js patch
+# Read MODEL_OVERRIDE from .dev.vars if it exists
+OVERRIDE_MODEL=""
+if [ -f .dev.vars ]; then
+    OVERRIDE_MODEL=$(grep "^MODEL_OVERRIDE=" .dev.vars | sed -E 's/MODEL_OVERRIDE="(.*)"/\1/')
+fi
+
+# Patch Claude Code configuration with optional model override
+node manage-config.js patch "$OVERRIDE_MODEL"
 
 nohup npm run dev > router.log 2>&1 &
 echo $! > router.pid
