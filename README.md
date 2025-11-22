@@ -47,6 +47,7 @@ We recommend using the **detached mode scripts**, which automatically configure 
 ```
 
 This script will:
+
 1. Backup your existing `~/.claude/settings.json`.
 2. Update Claude Code to use the local router (`http://localhost:8787`).
 3. Start the router in the background.
