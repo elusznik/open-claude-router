@@ -15,7 +15,7 @@ A Cloudflare Worker that translates between Anthropic's Claude API and OpenAI-co
 
 ```bash
 # Clone the repository
-git clone https://github.com/luohy15/open-claude-router.git
+git clone https://github.com/elusznik/open-claude-router.git
 cd open-claude-router
 
 # Install dependencies
